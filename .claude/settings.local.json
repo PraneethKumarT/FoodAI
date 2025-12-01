@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(terraform plan:*)",
+      "Bash(terraform version)",
+      "Bash(terraform init)",
+      "Bash(terraform validate)",
+      "Bash(terraform apply -auto-approve)",
+      "Bash(curl -s https://qx3i66fa87.execute-api.us-east-1.amazonaws.com/v1/health)",
+      "Bash(terraform state list:*)",
+      "Bash(terraform output:*)"
+    ],
+    "deny": []
+  }
+}
