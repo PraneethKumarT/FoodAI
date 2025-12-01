@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+venv*/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Data & Results
+data/
+outputs/
+uploads/
+results/
+*.mp4
+*.avi
+*.mov
+!demo_videos/*.mp4  # Keep demo videos if needed
+
+# Model Checkpoints (large files - download separately)
+checkpoints/*.pt
+checkpoints/*.pth
+gdino_checkpoints/*.pth
+!checkpoints/download_ckpts.sh
+!gdino_checkpoints/download_ckpts.sh
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+
+# Test outputs
+test_outputs/
+test_results/
+
+# Development
+demo/
+demo_images/
+notebooks/
+sav_dataset/
+training/
+assets/
+
+# Test scripts (keep one or two if needed)
+test_*.py
+!test_tracking_metric3d.py  # Keep the main one
+
+# Old demo scripts
+grounded_sam2_*.py
+
+# Docker volumes
+deploy/data/
+deploy/models/
+
+# Terraform
+terraform/.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
