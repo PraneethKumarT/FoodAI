@@ -50,12 +50,14 @@ def lambda_handler(event, context):
 
         if request_type == 'presigned':
             # Generate presigned URL for direct S3 upload
+            # Include SSE parameters for KMS-encrypted bucket
             presigned_url = s3.generate_presigned_url(
                 'put_object',
                 Params={
                     'Bucket': S3_VIDEOS_BUCKET,
                     'Key': s3_key,
-                    'ContentType': content_type
+                    'ContentType': content_type,
+                    'ServerSideEncryption': 'aws:kms'
                 },
                 ExpiresIn=3600  # 1 hour
             )
