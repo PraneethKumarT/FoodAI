@@ -27,6 +27,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Try to install flash-attn (optional, may fail on some platforms)
+RUN pip install --no-cache-dir flash-attn==2.3.6 || echo "flash-attn installation failed, continuing without it"
+
 # Copy worker script
 COPY worker.py .
 

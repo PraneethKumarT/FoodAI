@@ -12,6 +12,7 @@ opencv-python-headless==4.8.1.78
 Pillow==10.1.0
 numpy==1.24.3
 scipy==1.11.4
+einops==0.7.0
 
 # SAM2 Requirements
 hydra-core==1.3.2
