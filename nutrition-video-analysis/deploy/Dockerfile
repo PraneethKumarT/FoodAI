@@ -29,7 +29,7 @@ RUN pip3 install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cu118
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY deploy/requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Create necessary directories
@@ -41,17 +41,14 @@ RUN mkdir -p /app/data/uploads \
     /app/configs
 
 # Copy application code
-COPY app/ /app/app/
+COPY deploy/app/ /app/app/
 
 # Copy parent directory files (SAM2, nutrition_rag_system.py, etc.)
-# Note: During build, mount parent directory or copy required files
-COPY ../sam2 /app/sam2
-COPY ../nutrition_rag_system.py /app/
-COPY ../checkpoints /app/checkpoints
-COPY ../configs /app/configs
+COPY sam2 /app/sam2
+COPY nutrition_rag_system.py /app/
 
 # Copy RAG data
-COPY ../rag /app/data/rag
+COPY rag /app/data/rag
 
 # Set Python path
 ENV PYTHONPATH="/app:${PYTHONPATH}"
