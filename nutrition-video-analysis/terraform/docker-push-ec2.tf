@@ -137,7 +137,7 @@ resource "aws_instance" "docker_push_temp" {
     su - ec2-user -c "
       # Download the script from GitHub (public access)
       cd /home/ec2-user
-      curl -o build.sh https://raw.githubusercontent.com/pkakar00/FoodAI/main/nutrition-video-analysis/terraform/docker/build-and-push-on-ec2.sh
+      curl -o build.sh https://raw.githubusercontent.com/PraneethKumarT/FoodAI/main/nutrition-video-analysis/terraform/docker/build-and-push-on-ec2.sh
       chmod +x build.sh
       ./build.sh > /tmp/docker-build.log 2>&1
     "

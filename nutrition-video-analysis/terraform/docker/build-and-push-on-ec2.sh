@@ -27,7 +27,7 @@ fi
 echo "Cloning repository..."
 cd /home/ec2-user
 rm -rf FoodAI
-git clone https://github.com/pkakar00/FoodAI.git
+git clone https://github.com/PraneethKumarT/FoodAI.git
 cd FoodAI/nutrition-video-analysis
 
 # Log in to ECR
