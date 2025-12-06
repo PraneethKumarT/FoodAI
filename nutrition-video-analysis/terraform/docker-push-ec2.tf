@@ -124,7 +124,11 @@ resource "aws_instance" "docker_push_temp" {
 
   user_data = base64encode(<<-EOF
     #!/bin/bash
-    set -e
+    exec > >(tee /var/log/user-data.log)
+    exec 2>&1
+    set -x
+
+    echo "Starting Docker build process..."
 
     # Install Docker and git
     yum update -y
@@ -133,14 +137,34 @@ resource "aws_instance" "docker_push_temp" {
     systemctl enable docker
     usermod -a -G docker ec2-user
 
-    # Download and run the build script as ec2-user
-    su - ec2-user -c "
-      # Download the script from GitHub (public access)
+    # Run build as ec2-user
+    su - ec2-user << 'EOSU'
+      set -x
       cd /home/ec2-user
-      curl -o build.sh https://raw.githubusercontent.com/PraneethKumarT/FoodAI/main/nutrition-video-analysis/terraform/docker/build-and-push-on-ec2.sh
-      chmod +x build.sh
-      ./build.sh > /tmp/docker-build.log 2>&1
-    "
+
+      # Clone repo
+      echo "Cloning repository..."
+      git clone https://github.com/PraneethKumarT/FoodAI.git
+      cd FoodAI/nutrition-video-analysis
+
+      # ECR login
+      echo "Logging into ECR..."
+      aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 185329004895.dkr.ecr.us-east-1.amazonaws.com
+
+      # Build AMD64
+      echo "Building AMD64 image..."
+      docker build --platform linux/amd64 -f deploy/Dockerfile -t 185329004895.dkr.ecr.us-east-1.amazonaws.com/nutrition-video-analysis-dev-video-processor:latest .
+
+      # Push to ECR
+      echo "Pushing to ECR..."
+      docker push 185329004895.dkr.ecr.us-east-1.amazonaws.com/nutrition-video-analysis-dev-video-processor:latest
+
+      # Success marker
+      echo "Build completed at $(date)" > /tmp/build-complete.txt
+      aws s3 cp /tmp/build-complete.txt s3://nutrition-video-analysis-dev-videos-60ppnqfp/docker-images/build-complete.txt --region us-east-1
+
+      echo "DONE!"
+EOSU
   EOF
   )
 
