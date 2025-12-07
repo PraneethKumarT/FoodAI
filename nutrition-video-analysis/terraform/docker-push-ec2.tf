@@ -109,7 +109,7 @@ resource "aws_iam_instance_profile" "docker_push_temp" {
   role        = aws_iam_role.docker_push_temp.name
 }
 
-# EC2 instance
+# EC2 instance - minimal setup, we'll SSH in and run commands manually
 resource "aws_instance" "docker_push_temp" {
   ami                    = data.aws_ami.amazon_linux_2023.id
   instance_type          = "t3.medium"
@@ -122,13 +122,12 @@ resource "aws_instance" "docker_push_temp" {
     volume_type = "gp3"
   }
 
+  # Download and execute build script from GitHub
   user_data = base64encode(<<-EOF
     #!/bin/bash
+    set -x
     exec > >(tee /var/log/user-data.log)
     exec 2>&1
-    set -x
-
-    echo "Starting Docker build process..."
 
     # Install Docker and git
     yum update -y
@@ -137,34 +136,8 @@ resource "aws_instance" "docker_push_temp" {
     systemctl enable docker
     usermod -a -G docker ec2-user
 
-    # Run build as ec2-user
-    su - ec2-user << 'EOSU'
-      set -x
-      cd /home/ec2-user
-
-      # Clone repo
-      echo "Cloning repository..."
-      git clone https://github.com/PraneethKumarT/FoodAI.git
-      cd FoodAI/nutrition-video-analysis
-
-      # ECR login
-      echo "Logging into ECR..."
-      aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 185329004895.dkr.ecr.us-east-1.amazonaws.com
-
-      # Build AMD64
-      echo "Building AMD64 image..."
-      docker build --platform linux/amd64 -f deploy/Dockerfile -t 185329004895.dkr.ecr.us-east-1.amazonaws.com/nutrition-video-analysis-dev-video-processor:latest .
-
-      # Push to ECR
-      echo "Pushing to ECR..."
-      docker push 185329004895.dkr.ecr.us-east-1.amazonaws.com/nutrition-video-analysis-dev-video-processor:latest
-
-      # Success marker
-      echo "Build completed at $(date)" > /tmp/build-complete.txt
-      aws s3 cp /tmp/build-complete.txt s3://nutrition-video-analysis-dev-videos-60ppnqfp/docker-images/build-complete.txt --region us-east-1
-
-      echo "DONE!"
-EOSU
+    # Download and execute build script as ec2-user
+    su - ec2-user -c 'curl -fsSL https://raw.githubusercontent.com/PraneethKumarT/FoodAI/main/nutrition-video-analysis/terraform/docker/build-script.sh | bash'
   EOF
   )
 
