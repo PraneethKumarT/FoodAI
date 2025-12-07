@@ -112,19 +112,72 @@ resource "aws_instance" "model_upload_temp" {
     volume_type = "gp3"
   }
 
-  # Download models and upload to S3
+  # Download models and upload to S3 with recovery logic
   user_data = base64encode(<<-EOF
     #!/bin/bash
-    set -x
+    set -x  # Debug output but don't exit on error
     exec > >(tee /var/log/user-data.log)
     exec 2>&1
 
-    echo "Starting model download and upload at $(date)"
+    echo "=== Starting model download and upload at $(date) ==="
 
-    # Download and execute upload script from GitHub
-    curl -fsSL https://raw.githubusercontent.com/PraneethKumarT/FoodAI/main/nutrition-video-analysis/terraform/docker/download-and-upload-models.sh | bash
+    # Configuration
+    REGION="us-east-1"
+    S3_BUCKET="nutrition-video-analysis-dev-models-60ppnqfp"
+    MARKER_BUCKET="nutrition-video-analysis-dev-videos-60ppnqfp"
 
-    echo "Model upload completed at $(date)"
+    # Create temporary directories
+    mkdir -p /tmp/checkpoints
+    mkdir -p /tmp/gdino_checkpoints
+    cd /tmp
+
+    # Download SAM2.1 checkpoints with retry
+    echo "=== Downloading SAM2.1 checkpoints ==="
+    SAM2p1_BASE_URL="https://dl.fbaipublicfiles.com/segment_anything_2/092824"
+
+    for model in sam2.1_hiera_tiny.pt sam2.1_hiera_small.pt sam2.1_hiera_base_plus.pt sam2.1_hiera_large.pt; do
+        if [ ! -f "checkpoints/$${model}" ]; then
+            echo "Downloading $${model}..."
+            curl -L -o "checkpoints/$${model}" "$${SAM2p1_BASE_URL}/$${model}" || echo "Failed to download $${model}, continuing..."
+        else
+            echo "$${model} already exists, skipping"
+        fi
+    done
+
+    # Download Grounding DINO checkpoints with retry and increased timeout
+    echo "=== Downloading Grounding DINO checkpoints ==="
+    GDINO_BASE_URL="https://github.com/IDEA-Research/GroundingDINO/releases/download"
+
+    if [ ! -f "gdino_checkpoints/groundingdino_swint_ogc.pth" ]; then
+        echo "Downloading groundingdino_swint_ogc.pth..."
+        curl -L --max-time 600 -o gdino_checkpoints/groundingdino_swint_ogc.pth "$${GDINO_BASE_URL}/v0.1.0-alpha/groundingdino_swint_ogc.pth" || echo "Failed, continuing..."
+    fi
+
+    if [ ! -f "gdino_checkpoints/groundingdino_swinb_cogcoor.pth" ]; then
+        echo "Downloading groundingdino_swinb_cogcoor.pth..."
+        curl -L --max-time 600 -o gdino_checkpoints/groundingdino_swinb_cogcoor.pth "$${GDINO_BASE_URL}/v0.1.0-alpha2/groundingdino_swinb_cogcoor.pth" || echo "Failed, continuing..."
+    fi
+
+    # Upload to S3
+    echo "=== Uploading SAM2 checkpoints to S3 ==="
+    aws s3 cp checkpoints/ s3://$${S3_BUCKET}/checkpoints/ --recursive --region $${REGION}
+
+    echo "=== Uploading Grounding DINO checkpoints to S3 ==="
+    aws s3 cp gdino_checkpoints/ s3://$${S3_BUCKET}/gdino_checkpoints/ --recursive --region $${REGION}
+
+    # Verify uploads
+    echo "=== Verifying uploads ==="
+    echo "SAM2 checkpoints:"
+    aws s3 ls s3://$${S3_BUCKET}/checkpoints/ --region $${REGION} --recursive --human-readable
+
+    echo "Grounding DINO checkpoints:"
+    aws s3 ls s3://$${S3_BUCKET}/gdino_checkpoints/ --region $${REGION} --recursive --human-readable
+
+    # Write completion marker
+    echo "Model upload completed at $(date)" > /tmp/upload-complete.txt
+    aws s3 cp /tmp/upload-complete.txt s3://$${MARKER_BUCKET}/models-upload-complete.txt --region $${REGION}
+
+    echo "=== DONE ==="
   EOF
   )
 
