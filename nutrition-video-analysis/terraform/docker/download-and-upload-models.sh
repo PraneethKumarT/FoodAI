@@ -1,0 +1,51 @@
+#!/bin/bash
+set -ex
+
+# Configuration
+REGION="us-east-1"
+S3_BUCKET="nutrition-video-analysis-dev-models-60ppnqfp"
+
+echo "=== Starting model checkpoint download and upload ==="
+
+# Create temporary directories
+mkdir -p /tmp/checkpoints
+mkdir -p /tmp/gdino_checkpoints
+
+cd /tmp
+
+# Download SAM2.1 checkpoints
+echo "=== Downloading SAM2.1 checkpoints ==="
+SAM2p1_BASE_URL="https://dl.fbaipublicfiles.com/segment_anything_2/092824"
+
+curl -L -o checkpoints/sam2.1_hiera_tiny.pt "${SAM2p1_BASE_URL}/sam2.1_hiera_tiny.pt"
+curl -L -o checkpoints/sam2.1_hiera_small.pt "${SAM2p1_BASE_URL}/sam2.1_hiera_small.pt"
+curl -L -o checkpoints/sam2.1_hiera_base_plus.pt "${SAM2p1_BASE_URL}/sam2.1_hiera_base_plus.pt"
+curl -L -o checkpoints/sam2.1_hiera_large.pt "${SAM2p1_BASE_URL}/sam2.1_hiera_large.pt"
+
+# Download Grounding DINO checkpoints
+echo "=== Downloading Grounding DINO checkpoints ==="
+GDINO_BASE_URL="https://github.com/IDEA-Research/GroundingDINO/releases/download"
+
+curl -L -o gdino_checkpoints/groundingdino_swint_ogc.pth "${GDINO_BASE_URL}/v0.1.0-alpha/groundingdino_swint_ogc.pth"
+curl -L -o gdino_checkpoints/groundingdino_swinb_cogcoor.pth "${GDINO_BASE_URL}/v0.1.0-alpha2/groundingdino_swinb_cogcoor.pth"
+
+# Upload to S3
+echo "=== Uploading SAM2 checkpoints to S3 ==="
+aws s3 cp checkpoints/ s3://${S3_BUCKET}/checkpoints/ --recursive --region ${REGION}
+
+echo "=== Uploading Grounding DINO checkpoints to S3 ==="
+aws s3 cp gdino_checkpoints/ s3://${S3_BUCKET}/gdino_checkpoints/ --recursive --region ${REGION}
+
+# Verify uploads
+echo "=== Verifying uploads ==="
+echo "SAM2 checkpoints:"
+aws s3 ls s3://${S3_BUCKET}/checkpoints/ --region ${REGION} --recursive --human-readable
+
+echo "Grounding DINO checkpoints:"
+aws s3 ls s3://${S3_BUCKET}/gdino_checkpoints/ --region ${REGION} --recursive --human-readable
+
+# Write completion marker
+echo "Model upload completed at $(date)" > /tmp/upload-complete.txt
+aws s3 cp /tmp/upload-complete.txt s3://${S3_BUCKET}/models-upload-complete.txt --region ${REGION}
+
+echo "=== DONE ==="
